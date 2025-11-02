@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-11-02
+
+### Added
+- Comprehensive unit tests for all Kindle citation formats (MLA, APA, Chicago Style, None)
+- Detailed error reporting with OS error codes and error kinds for file operations
+
+### Changed
+- Improved error messages to show technical details without verbose troubleshooting steps
+- Updated documentation to clarify all citation formats are supported
+
+### Fixed
+- Error handling now provides clear diagnostic information for file access issues
+
 ## [0.1.0] - 2025-11-02
 
 ### Added

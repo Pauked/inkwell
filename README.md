@@ -12,10 +12,10 @@ Convert Kindle HTML notebook exports to Markdown for use in Obsidian. Designed f
   - Section headings and subheadings
   - Notes and bookmarks
 - YAML frontmatter with book metadata and creation timestamp
-- Supports MLA citation format from Kindle macOS exports
+- Supports all Kindle citation formats: MLA, APA, Chicago Style, or None
 - Configurable default export folder (supports multiple config locations)
 - Automatic file naming based on author and title
-- Fully unit tested (18 tests) with cargo clippy compliance
+- Fully unit tested (22 tests) with cargo clippy compliance
 
 ## Installation
 
@@ -92,11 +92,11 @@ If no config file is found, inkwell defaults to `~/Documents/Inkwell`.
 1. Open the Kindle app on macOS
 2. Select the book you want to export
 3. Export the notebook as HTML (File → Export Notebook)
-4. Choose MLA citation format when prompted
+4. Choose your preferred citation format: MLA, APA, Chicago Style, or None
 5. Save the HTML file
 6. Run inkwell on the exported file
 
-**Note:** This tool is specifically designed for sideloaded ePub files in Kindle where the official Kindle API and sync tools don't provide export functionality.
+**Note:** This tool is specifically designed for sideloaded ePub files in Kindle where the official Kindle API and sync tools don't provide export functionality. All four citation formats are fully supported.
 
 ## Output Format
 
@@ -144,7 +144,7 @@ created: "2025-11-02 17:15:01"
 
 ## Development
 
-Run tests (18 tests):
+Run tests (22 tests):
 
 ```bash
 cargo test

@@ -62,6 +62,11 @@ if [ ! -f "$target_path/config.toml" ]; then
 # Default folder where markdown files will be saved
 # Update this path to match your Obsidian vault or preferred location
 default_export_folder = "$HOME/Documents/Obsidian/Book Highlights"
+
+# Enable Obsidian Painter plugin color highlighting (requires plugin installation)
+# Set to true if you have the Obsidian Painter plugin installed
+# See: https://github.com/KraXen72/obsidian-painter
+enable_painter_highlights = true
 EOF
 else
     echo -e "${GREEN}✓ Existing config.toml found, skipping...${NC}"

@@ -6,6 +6,8 @@ use std::path::PathBuf;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub default_export_folder: PathBuf,
+    #[serde(default)]
+    pub enable_painter_highlights: bool,
 }
 
 impl Default for Config {
@@ -14,6 +16,7 @@ impl Default for Config {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         Self {
             default_export_folder: PathBuf::from(home).join("Documents/Inkwell"),
+            enable_painter_highlights: false,
         }
     }
 }

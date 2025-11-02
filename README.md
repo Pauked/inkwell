@@ -1,20 +1,21 @@
 # inkwell
 
-Convert HTML notebook exports to Markdown for use in Obsidian. Designed for sideloaded ePub files where official sync tools don't work.
+Convert Kindle HTML notebook exports to Markdown for use in Obsidian. Designed for sideloaded ePub files where Kindle's official API and sync tools don't provide export functionality.
 
 ## Features
 
-- Converts HTML notebook exports to clean Markdown
+- Converts Kindle macOS HTML notebook exports to clean Markdown
 - Preserves all highlight metadata:
   - Highlight colors (yellow, pink, blue, orange, green, aqua, red)
-  - Color-coded metadata labels using [Obsidian Painter](https://github.com/KraXen72/obsidian-painter) classes
+  - Optional color-coded metadata labels using [Obsidian Painter](https://github.com/KraXen72/obsidian-painter) classes (off by default)
   - Page numbers and locations
   - Section headings and subheadings
   - Notes and bookmarks
 - YAML frontmatter with book metadata and creation timestamp
+- Supports MLA citation format from Kindle macOS exports
 - Configurable default export folder (supports multiple config locations)
 - Automatic file naming based on author and title
-- Fully unit tested (17 tests) with cargo clippy compliance
+- Fully unit tested (18 tests) with cargo clippy compliance
 
 ## Installation
 
@@ -78,17 +79,24 @@ Configuration file format:
 
 ```toml
 default_export_folder = "/path/to/your/obsidian/vault/highlights"
+
+# Enable Obsidian Painter plugin color highlighting (optional, off by default)
+# Set to true if you have the Obsidian Painter plugin installed
+enable_painter_highlights = false
 ```
 
 If no config file is found, inkwell defaults to `~/Documents/Inkwell`.
 
 ## Exporting Notebooks
 
-1. Open your reading app on macOS
+1. Open the Kindle app on macOS
 2. Select the book you want to export
-3. Export the notebook as HTML (e.g., File → Export Notebook)
-4. Save the HTML file
-5. Run inkwell on the exported file
+3. Export the notebook as HTML (File → Export Notebook)
+4. Choose MLA citation format when prompted
+5. Save the HTML file
+6. Run inkwell on the exported file
+
+**Note:** This tool is specifically designed for sideloaded ePub files in Kindle where the official Kindle API and sync tools don't provide export functionality.
 
 ## Output Format
 
@@ -136,7 +144,7 @@ created: "2025-11-02 17:15:01"
 
 ## Development
 
-Run tests (17 tests):
+Run tests (18 tests):
 
 ```bash
 cargo test

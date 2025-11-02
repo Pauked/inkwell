@@ -2,7 +2,7 @@ use crate::parser::{Book, Entry, Highlight, Note, Bookmark};
 use anyhow::Result;
 use chrono::Local;
 
-pub fn generate_markdown(book: &Book) -> Result<String> {
+pub fn generate_markdown(book: &Book, enable_painter: bool) -> Result<String> {
     let mut output = String::new();
 
     // Get current timestamp
@@ -39,7 +39,7 @@ pub fn generate_markdown(book: &Book) -> Result<String> {
         for entry in &section.entries {
             match entry {
                 Entry::Highlight(highlight) => {
-                    format_highlight(&mut output, highlight);
+                    format_highlight(&mut output, highlight, enable_painter);
                 }
                 Entry::Note(note) => {
                     format_note(&mut output, note);
@@ -54,29 +54,35 @@ pub fn generate_markdown(book: &Book) -> Result<String> {
     Ok(output)
 }
 
-fn format_highlight(output: &mut String, highlight: &Highlight) {
-    // Map Kindle colors to Obsidian Painter class suffixes
-    let painter_class = match highlight.color.to_lowercase().as_str() {
-        "yellow" => "y",
-        "green" => "g",
-        "pink" => "p",
-        "blue" => "b",
-        "red" => "r",
-        "orange" => "o",
-        "aqua" => "b", // Map aqua to blue as fallback
-        _ => "y", // Default to yellow
-    };
-
+fn format_highlight(output: &mut String, highlight: &Highlight, enable_painter: bool) {
     // Format the highlight text as a blockquote
     output.push_str(&format!("> {}\n\n", highlight.text));
 
-    // Add metadata line with colored highlight for the color name
+    // Add metadata line
     output.push_str("**Highlight** (");
-    output.push_str(&format!(
-        "<mark class=\"hltr-{}\">{}</mark>",
-        painter_class,
-        highlight.color
-    ));
+
+    if enable_painter {
+        // Map Kindle colors to Obsidian Painter class suffixes
+        let painter_class = match highlight.color.to_lowercase().as_str() {
+            "yellow" => "y",
+            "green" => "g",
+            "pink" => "p",
+            "blue" => "b",
+            "red" => "r",
+            "orange" => "o",
+            "aqua" => "b", // Map aqua to blue as fallback
+            _ => "y", // Default to yellow
+        };
+
+        output.push_str(&format!(
+            "<mark class=\"hltr-{}\">{}</mark>",
+            painter_class,
+            highlight.color
+        ));
+    } else {
+        output.push_str(&highlight.color);
+    }
+
     output.push(')');
 
     if let Some(ref subheading) = highlight.subheading {
@@ -144,7 +150,7 @@ mod tests {
     use crate::parser::Section;
 
     #[test]
-    fn test_format_highlight_yellow() {
+    fn test_format_highlight_yellow_with_painter() {
         let highlight = Highlight {
             color: "yellow".to_string(),
             page: Some(11),
@@ -154,13 +160,33 @@ mod tests {
         };
 
         let mut output = String::new();
-        format_highlight(&mut output, &highlight);
+        format_highlight(&mut output, &highlight, true);
 
         assert!(output.contains("> This is a test highlight."));
         assert!(output.contains("<mark class=\"hltr-y\">yellow</mark>"));
         assert!(output.contains("Page 11"));
         assert!(output.contains("Location 108"));
         assert!(output.contains("---"));
+    }
+
+    #[test]
+    fn test_format_highlight_yellow_without_painter() {
+        let highlight = Highlight {
+            color: "yellow".to_string(),
+            page: Some(11),
+            location: 108,
+            subheading: None,
+            text: "This is a test highlight.".to_string(),
+        };
+
+        let mut output = String::new();
+        format_highlight(&mut output, &highlight, false);
+
+        assert!(output.contains("> This is a test highlight."));
+        assert!(output.contains("**Highlight** (yellow)"));
+        assert!(!output.contains("<mark"));
+        assert!(output.contains("Page 11"));
+        assert!(output.contains("Location 108"));
     }
 
     #[test]
@@ -174,7 +200,7 @@ mod tests {
         };
 
         let mut output = String::new();
-        format_highlight(&mut output, &highlight);
+        format_highlight(&mut output, &highlight, true);
 
         assert!(output.contains("> People like this tend to thrive."));
         assert!(output.contains("<mark class=\"hltr-p\">pink</mark>"));
@@ -205,7 +231,7 @@ mod tests {
             };
 
             let mut output = String::new();
-            format_highlight(&mut output, &highlight);
+            format_highlight(&mut output, &highlight, true);
 
             let expected_markup = format!("<mark class=\"hltr-{}\">{}</mark>", expected_class, color_name);
             assert!(
@@ -290,7 +316,7 @@ mod tests {
             sections: vec![],
         };
 
-        let markdown = generate_markdown(&book).unwrap();
+        let markdown = generate_markdown(&book, false).unwrap();
 
         assert!(markdown.contains("---"));
         assert!(markdown.contains("title: \"Test Book\""));
@@ -326,7 +352,7 @@ mod tests {
             }],
         };
 
-        let markdown = generate_markdown(&book).unwrap();
+        let markdown = generate_markdown(&book, true).unwrap();
 
         assert!(markdown.contains("### Chapter 1"));
         assert!(markdown.contains("> First highlight"));

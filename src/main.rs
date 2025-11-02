@@ -46,7 +46,7 @@ fn main() -> Result<()> {
         .context("Failed to parse HTML content")?;
 
     // Generate Markdown
-    let markdown = markdown::generate_markdown(&book)
+    let markdown = markdown::generate_markdown(&book, config.enable_painter_highlights)
         .context("Failed to generate Markdown")?;
 
     // Determine output path

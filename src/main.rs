@@ -39,7 +39,7 @@ fn main() -> Result<()> {
 
     // Read HTML file
     let html_content = fs::read_to_string(&args.input)
-        .context(format!("Failed to read HTML file: {:?}", args.input))?;
+        .map_err(|e| anyhow::anyhow!("Failed to read file {:?}: {} ({})", args.input, e, e.kind()))?;
 
     // Parse HTML
     let book = parser::parse_html(&html_content)
@@ -68,7 +68,7 @@ fn main() -> Result<()> {
 
     // Write output file
     fs::write(&output_path, markdown)
-        .context(format!("Failed to write output file: {:?}", output_path))?;
+        .map_err(|e| anyhow::anyhow!("Failed to write file {:?}: {} ({})", output_path, e, e.kind()))?;
 
     println!("✓ Converted successfully!");
     println!("  Input:  {:?}", args.input);

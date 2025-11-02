@@ -342,4 +342,100 @@ mod tests {
         assert_eq!(page, Some(11));
         assert_eq!(location, 108);
     }
+
+    #[test]
+    fn test_parse_html_with_mla_citation() {
+        let html = r#"<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+    <div class="bodyContainer">
+        <div class="bookTitle">Test Book</div>
+        <div class="authors">Test Author</div>
+        <div class="citation">Citation (MLA): Author, Test. <i>Test Book</i>. , 2025. Kindle file.</div>
+        <div class="sectionHeading">Chapter 1</div>
+        <div class="noteHeading">Highlight(<span class="highlight_yellow">yellow</span>) - Location 100</div>
+        <div class="noteText">Test highlight text</div>
+    </div>
+</body>
+</html>"#;
+
+        let book = parse_html(html).unwrap();
+        assert_eq!(book.title, "Test Book");
+        assert_eq!(book.author, "Test Author");
+        assert_eq!(book.citation, "Citation (MLA): Author, Test. Test Book. , 2025. Kindle file.");
+        assert_eq!(book.sections.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_html_with_apa_citation() {
+        let html = r#"<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+    <div class="bodyContainer">
+        <div class="bookTitle">Test Book</div>
+        <div class="authors">Test Author</div>
+        <div class="citation">Citation (APA): Author, T. (2025). <i>Test Book</i> [Kindle iOS version]. Retrieved from Amazon.com</div>
+        <div class="sectionHeading">Chapter 1</div>
+        <div class="noteHeading">Highlight(<span class="highlight_yellow">yellow</span>) - Location 100</div>
+        <div class="noteText">Test highlight text</div>
+    </div>
+</body>
+</html>"#;
+
+        let book = parse_html(html).unwrap();
+        assert_eq!(book.title, "Test Book");
+        assert_eq!(book.author, "Test Author");
+        assert_eq!(book.citation, "Citation (APA): Author, T. (2025). Test Book [Kindle iOS version]. Retrieved from Amazon.com");
+        assert_eq!(book.sections.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_html_with_chicago_citation() {
+        let html = r#"<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+    <div class="bodyContainer">
+        <div class="bookTitle">Test Book</div>
+        <div class="authors">Test Author</div>
+        <div class="citation">Citation (Chicago Style): Author, Test. <i>Test Book</i>. , 2025. Kindle edition.</div>
+        <div class="sectionHeading">Chapter 1</div>
+        <div class="noteHeading">Highlight(<span class="highlight_yellow">yellow</span>) - Location 100</div>
+        <div class="noteText">Test highlight text</div>
+    </div>
+</body>
+</html>"#;
+
+        let book = parse_html(html).unwrap();
+        assert_eq!(book.title, "Test Book");
+        assert_eq!(book.author, "Test Author");
+        assert_eq!(book.citation, "Citation (Chicago Style): Author, Test. Test Book. , 2025. Kindle edition.");
+        assert_eq!(book.sections.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_html_with_no_citation() {
+        let html = r#"<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+    <div class="bodyContainer">
+        <div class="bookTitle">Test Book</div>
+        <div class="authors">Test Author</div>
+        <div class="citation"></div>
+        <div class="sectionHeading">Chapter 1</div>
+        <div class="noteHeading">Highlight(<span class="highlight_yellow">yellow</span>) - Location 100</div>
+        <div class="noteText">Test highlight text</div>
+    </div>
+</body>
+</html>"#;
+
+        let book = parse_html(html).unwrap();
+        assert_eq!(book.title, "Test Book");
+        assert_eq!(book.author, "Test Author");
+        assert_eq!(book.citation, "");
+        assert_eq!(book.sections.len(), 1);
+    }
 }

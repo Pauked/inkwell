@@ -2,9 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [0.1.1] - 2025-11-02
 
 ### Added
@@ -36,7 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic file naming based on author and title
 - MLA citation format support from Kindle macOS exports
 - TOML-based configuration system
-- Deployment script for easy installation to Dropbox
 - Comprehensive unit test suite (18 tests)
 - Full cargo clippy compliance
 

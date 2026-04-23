@@ -19,29 +19,12 @@ Convert Kindle HTML notebook exports to Markdown for use in Obsidian. Designed f
 
 ## Installation
 
-### Option 1: Build and Install Locally
+Build from source. Requires a [Rust toolchain](https://rustup.rs).
 
 ```bash
+git clone https://github.com/Pauked/inkwell.git
+cd inkwell
 cargo install --path .
-```
-
-### Option 2: Deploy to Dropbox (Recommended)
-
-```bash
-./deploy-local.sh
-```
-
-This will:
-- Build a release binary
-- Deploy to `$DROPBOX_PATH/Utils/inkwell` (or `~/Desktop/inkwell` if not set)
-- Create a sample `config.toml` with your export folder path
-- Create a README.txt with usage instructions
-
-The binary in Dropbox can be run from anywhere and will use the config.toml in its directory.
-
-**Note**: Set the `DROPBOX_PATH` environment variable to point to your Dropbox folder:
-```bash
-export DROPBOX_PATH="/path/to/your/Dropbox"
 ```
 
 ## Usage
@@ -160,12 +143,6 @@ Build:
 
 ```bash
 cargo build --release
-```
-
-Deploy locally:
-
-```bash
-./deploy-local.sh
 ```
 
 ## License

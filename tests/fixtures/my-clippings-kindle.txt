@@ -1,0 +1,25 @@
+﻿The Pragmatic Programmer (David Thomas; Andrew Hunt)
+- Your Highlight on page 12 | Location 123-125 | Added on Monday, 3 March 2025 21:14:02
+
+Care about your craft. Why spend your life developing software unless you care about doing it well?
+==========
+The Pragmatic Programmer (David Thomas; Andrew Hunt)
+- Your Note on page 12 | Location 125 | Added on Monday, 3 March 2025 21:14:30
+
+This is the whole book in one line.
+==========
+The Pragmatic Programmer (David Thomas; Andrew Hunt)
+- Your Bookmark on page 20 | Location 200 | Added on Tuesday, 4 March 2025 08:01:11
+
+
+==========
+Rust in Action (2nd ed.) (Tim McNamara)
+- Your Highlight on Location 55-57 | Added on Wednesday, 5 March 2025 19:30:00
+
+Rust is a systems programming language.
+==========
+The Pragmatic Programmer (David Thomas; Andrew Hunt)
+- Your Highlight at location 301-302 | Added on Thursday, 6 March 2025 07:45:00
+
+Don't live with broken windows.
+==========

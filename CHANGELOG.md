@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2] - 2026-09-06
+
+### Added
+- `My Clippings.txt` import (`.txt` input) for Kindle devices and CrossInk e-readers
+  - Groups clippings by book, one Markdown note per book, rebuilt from the whole file each run
+  - CrossInk chapter titles become section headings; Kindle files get a single "Highlights" section
+  - Handles highlights, notes and bookmarks; exact duplicates within a book are dropped
+  - Malformed or empty clippings are skipped with a warning instead of aborting
+  - Frontmatter `source` is `kindle-clippings` or `crossink-clippings`
+- Golden-file tests for HTML export and both clippings dialects
+
+### Changed
+- Location is now optional; entries without one print only the page number
+- `--output` is rejected when the input contains more than one book
+- Source ran through `cargo fmt`
+
+### Fixed
+- HTML export bookmarks were dropped unless Kindle emitted an empty text block after them; a bookmark followed by another entry, a section heading, or the end of the file is now kept
+
 ## [0.1.1] - 2025-11-02
 
 ### Added

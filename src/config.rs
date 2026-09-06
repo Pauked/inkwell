@@ -54,8 +54,8 @@ impl Config {
         if config_path.exists() {
             let contents = fs::read_to_string(&config_path)
                 .context(format!("Failed to read config file: {:?}", config_path))?;
-            let config: Config = toml::from_str(&contents)
-                .context("Failed to parse config file")?;
+            let config: Config =
+                toml::from_str(&contents).context("Failed to parse config file")?;
             Ok(config)
         } else {
             // Only auto-create in user config directory
@@ -75,8 +75,7 @@ impl Config {
     }
 
     fn user_config_path() -> Result<PathBuf> {
-        let home = std::env::var("HOME")
-            .context("HOME environment variable not set")?;
+        let home = std::env::var("HOME").context("HOME environment variable not set")?;
         Ok(PathBuf::from(home).join(".config/inkwell/config.toml"))
     }
 }

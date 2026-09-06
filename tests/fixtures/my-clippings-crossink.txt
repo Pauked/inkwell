@@ -1,0 +1,5 @@
+A Philosophy of Software Design, 2nd Edition (John K. Ousterhout)
+- Your Highlight on Page 1 | 1: Introduction | Added on Sunday, September 6, 2026, 10:52 AM
+
+Writing computer software is one of the purest creative activities in the history of the human race.
+==========

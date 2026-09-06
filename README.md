@@ -1,10 +1,16 @@
 # inkwell
 
-Convert Kindle HTML notebook exports to Markdown for use in Obsidian. Designed for sideloaded ePub files where Kindle's official API and sync tools don't provide export functionality.
+Convert e-reader highlights to Markdown notes for Obsidian. One note per book, highlights grouped by chapter, with page and location references and YAML frontmatter.
+
+Reads two inputs:
+
+- **Kindle macOS app HTML notebook exports** (one book per file). This is the only export route for sideloaded ePubs, which Kindle's sync and notebook tools don't cover.
+- **`My Clippings.txt`** (many books per file), as written by a physical Kindle or by any reader using the same format, such as the Xteink X3 running [CrossInk](https://github.com/uxjulia/CrossInk).
 
 ## Features
 
 - Converts Kindle macOS HTML notebook exports to clean Markdown
+- Imports `My Clippings.txt` (Kindle device or CrossInk firmware): one note per book, chapters as sections, exact duplicates dropped, notes rebuilt from the whole file on every run
 - Preserves all highlight metadata:
   - Highlight colors (yellow, pink, blue, orange, green, aqua, red)
   - Optional color-coded metadata labels using [Obsidian Painter](https://github.com/KraXen72/obsidian-painter) classes (off by default)
@@ -15,7 +21,7 @@ Convert Kindle HTML notebook exports to Markdown for use in Obsidian. Designed f
 - Supports all Kindle citation formats: MLA, APA, Chicago Style, or None
 - Configurable default export folder (supports multiple config locations)
 - Automatic file naming based on author and title
-- Fully unit tested (22 tests) with cargo clippy compliance
+- Fully unit tested (42 tests) with cargo clippy compliance
 
 ## Installation
 
@@ -39,7 +45,19 @@ inkwell "/path/to/Book Title - Notebook.html"
 
 This will create a Markdown file in your configured default export folder.
 
+### Import a Clippings File
+
+Any `.txt` input is treated as a Kindle-device `My Clippings.txt`. Every book in the file gets its own `<Author> - <Title>.md` in the export folder, overwritten on each run, so re-running after new highlights is safe:
+
+```bash
+inkwell "/Volumes/KINDLE/documents/My Clippings.txt"
+```
+
+Both dialects are handled. A physical Kindle writes `Location 123-125` (the note records the first number) and also emits notes and bookmarks; CrossInk writes the chapter title instead, which becomes the section heading. The frontmatter `source` field says which: `kindle-clippings` or `crossink-clippings`. Malformed or empty clippings are skipped with a warning on stderr.
+
 ### Specify Output File
+
+Only valid when the input holds a single book.
 
 ```bash
 inkwell "/path/to/Book Title - Notebook.html" -o "/path/to/output.md"
@@ -85,11 +103,11 @@ If no config file is found, inkwell defaults to `~/Documents/Inkwell`.
 
 The generated Markdown includes:
 
-- YAML frontmatter with title, author, and citation
+- YAML frontmatter with title, author, citation and source (`kindle-export`, `kindle-clippings` or `crossink-clippings`)
 - Book metadata section
 - Highlights organized by chapter/section
 - All notes and bookmarks preserved with their context
-- Page numbers and locations for easy reference
+- Page numbers and locations for easy reference (location omitted when the source has none)
 
 Example output:
 
@@ -127,7 +145,7 @@ created: "2025-11-02 17:15:01"
 
 ## Development
 
-Run tests (22 tests):
+Run tests (42 tests):
 
 ```bash
 cargo test

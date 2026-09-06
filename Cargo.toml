@@ -1,8 +1,8 @@
 [package]
 name = "inkwell"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
-description = "Inkwell - Notebook Exports to Markdown"
+description = "Inkwell - e-reader highlights to Obsidian Markdown"
 authors = ["Paul Healey"]
 
 [dependencies]

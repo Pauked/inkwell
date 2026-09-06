@@ -1,20 +1,23 @@
-use crate::parser::{Book, Entry, Highlight, Note, Bookmark};
+use crate::parser::{Book, Bookmark, Entry, Highlight, Note};
 use anyhow::Result;
 use chrono::Local;
 
+/// Render a book to Markdown, stamping the frontmatter with the current time.
 pub fn generate_markdown(book: &Book, enable_painter: bool) -> Result<String> {
-    let mut output = String::new();
+    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    render_markdown(book, enable_painter, &timestamp)
+}
 
-    // Get current timestamp
-    let now = Local::now();
-    let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
+/// Render a book to Markdown with an explicit `created` timestamp (testable).
+pub fn render_markdown(book: &Book, enable_painter: bool, timestamp: &str) -> Result<String> {
+    let mut output = String::new();
 
     // Generate frontmatter
     output.push_str("---\n");
     output.push_str(&format!("title: \"{}\"\n", escape_yaml(&book.title)));
     output.push_str(&format!("author: \"{}\"\n", escape_yaml(&book.author)));
     output.push_str(&format!("citation: \"{}\"\n", escape_yaml(&book.citation)));
-    output.push_str("source: kindle-export\n");
+    output.push_str(&format!("source: {}\n", book.source.as_str()));
     output.push_str(&format!("created: \"{}\"\n", timestamp));
     output.push_str("---\n\n");
 
@@ -71,13 +74,12 @@ fn format_highlight(output: &mut String, highlight: &Highlight, enable_painter: 
             "red" => "r",
             "orange" => "o",
             "aqua" => "b", // Map aqua to blue as fallback
-            _ => "y", // Default to yellow
+            _ => "y",      // Default to yellow
         };
 
         output.push_str(&format!(
             "<mark class=\"hltr-{}\">{}</mark>",
-            painter_class,
-            highlight.color
+            painter_class, highlight.color
         ));
     } else {
         output.push_str(&highlight.color);
@@ -93,7 +95,9 @@ fn format_highlight(output: &mut String, highlight: &Highlight, enable_painter: 
         output.push_str(&format!(" - Page {}", page));
     }
 
-    output.push_str(&format!(" - Location {}", highlight.location));
+    if let Some(location) = highlight.location {
+        output.push_str(&format!(" - Location {}", location));
+    }
     output.push_str("\n\n");
 
     output.push_str("---\n\n");
@@ -104,19 +108,19 @@ fn format_note(output: &mut String, note: &Note) {
     output.push_str(&format!("**Note**: {}\n", note.text));
     output.push('\n');
 
-    // Add metadata line
-    output.push('*');
+    // Add metadata line (italic), skipped entirely when there is nothing to say
+    let parts: Vec<String> = [
+        note.subheading.clone(),
+        note.page.map(|p| format!("Page {}", p)),
+        note.location.map(|l| format!("Location {}", l)),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
 
-    if let Some(ref subheading) = note.subheading {
-        output.push_str(&format!("{} - ", subheading));
+    if !parts.is_empty() {
+        output.push_str(&format!("*{}*\n\n", parts.join(" - ")));
     }
-
-    if let Some(page) = note.page {
-        output.push_str(&format!("Page {} - ", page));
-    }
-
-    output.push_str(&format!("Location {}*", note.location));
-    output.push_str("\n\n");
 
     output.push_str("---\n\n");
 }
@@ -132,7 +136,9 @@ fn format_bookmark(output: &mut String, bookmark: &Bookmark) {
         output.push_str(&format!(" - Page {}", page));
     }
 
-    output.push_str(&format!(" - Location {}", bookmark.location));
+    if let Some(location) = bookmark.location {
+        output.push_str(&format!(" - Location {}", location));
+    }
     output.push_str("\n\n");
 
     output.push_str("---\n\n");
@@ -154,7 +160,7 @@ mod tests {
         let highlight = Highlight {
             color: "yellow".to_string(),
             page: Some(11),
-            location: 108,
+            location: Some(108),
             subheading: None,
             text: "This is a test highlight.".to_string(),
         };
@@ -174,7 +180,7 @@ mod tests {
         let highlight = Highlight {
             color: "yellow".to_string(),
             page: Some(11),
-            location: 108,
+            location: Some(108),
             subheading: None,
             text: "This is a test highlight.".to_string(),
         };
@@ -194,7 +200,7 @@ mod tests {
         let highlight = Highlight {
             color: "pink".to_string(),
             page: Some(15),
-            location: 128,
+            location: Some(128),
             subheading: Some("Leaders don't make great followers".to_string()),
             text: "People like this tend to thrive.".to_string(),
         };
@@ -225,7 +231,7 @@ mod tests {
             let highlight = Highlight {
                 color: color_name.to_string(),
                 page: None,
-                location: 100,
+                location: Some(100),
                 subheading: None,
                 text: "Test text".to_string(),
             };
@@ -233,7 +239,10 @@ mod tests {
             let mut output = String::new();
             format_highlight(&mut output, &highlight, true);
 
-            let expected_markup = format!("<mark class=\"hltr-{}\">{}</mark>", expected_class, color_name);
+            let expected_markup = format!(
+                "<mark class=\"hltr-{}\">{}</mark>",
+                expected_class, color_name
+            );
             assert!(
                 output.contains(&expected_markup),
                 "Expected '{}' for color '{}', got: {}",
@@ -248,7 +257,7 @@ mod tests {
     fn test_format_note_with_page() {
         let note = Note {
             page: Some(16),
-            location: 143,
+            location: Some(143),
             subheading: Some("Getting stuck in organisations".to_string()),
             text: "Very true".to_string(),
         };
@@ -265,7 +274,7 @@ mod tests {
     fn test_format_note_without_page() {
         let note = Note {
             page: None,
-            location: 200,
+            location: Some(200),
             subheading: None,
             text: "My thoughts".to_string(),
         };
@@ -282,7 +291,7 @@ mod tests {
     fn test_format_bookmark() {
         let bookmark = Bookmark {
             page: Some(31),
-            location: 307,
+            location: Some(307),
             subheading: Some("Understanding your risk exposure".to_string()),
         };
 
@@ -313,6 +322,7 @@ mod tests {
             title: "Test Book".to_string(),
             author: "Test Author".to_string(),
             citation: "Test Citation".to_string(),
+            source: crate::parser::Source::KindleExport,
             sections: vec![],
         };
 
@@ -332,19 +342,20 @@ mod tests {
             title: "Test Book".to_string(),
             author: "Test Author".to_string(),
             citation: "".to_string(),
+            source: crate::parser::Source::KindleExport,
             sections: vec![Section {
                 heading: "Chapter 1".to_string(),
                 entries: vec![
                     Entry::Highlight(Highlight {
                         color: "yellow".to_string(),
                         page: Some(10),
-                        location: 100,
+                        location: Some(100),
                         subheading: None,
                         text: "First highlight".to_string(),
                     }),
                     Entry::Note(Note {
                         page: Some(10),
-                        location: 101,
+                        location: Some(101),
                         subheading: None,
                         text: "My note".to_string(),
                     }),
@@ -358,5 +369,68 @@ mod tests {
         assert!(markdown.contains("> First highlight"));
         assert!(markdown.contains("<mark class=\"hltr-y\">yellow</mark>"));
         assert!(markdown.contains("**Note**: My note"));
+    }
+    #[test]
+    fn test_render_markdown_html_export_matches_golden() {
+        let html = include_str!("../tests/fixtures/kindle-export.html");
+        let golden = include_str!("../tests/fixtures/kindle-export.golden.md");
+        let book = crate::parser::parse_html(html).unwrap();
+
+        let markdown = render_markdown(&book, false, "2026-01-01 00:00:00").unwrap();
+
+        assert_eq!(markdown, golden);
+    }
+
+    #[test]
+    fn test_render_markdown_crossink_clippings_matches_golden() {
+        let content = include_str!("../tests/fixtures/my-clippings-crossink.txt");
+        let golden = include_str!("../tests/fixtures/my-clippings-crossink.golden.md");
+        let parsed = crate::clippings::parse_clippings(content);
+
+        let markdown = render_markdown(&parsed.books[0], false, "2026-01-01 00:00:00").unwrap();
+
+        assert_eq!(markdown, golden);
+    }
+
+    #[test]
+    fn test_render_markdown_kindle_clippings_matches_golden() {
+        let content = include_str!("../tests/fixtures/my-clippings-kindle.txt");
+        let golden = include_str!("../tests/fixtures/my-clippings-kindle.golden.md");
+        let parsed = crate::clippings::parse_clippings(content);
+
+        let markdown = render_markdown(&parsed.books[0], false, "2026-01-01 00:00:00").unwrap();
+
+        assert_eq!(markdown, golden);
+    }
+
+    #[test]
+    fn test_format_note_without_location_prints_only_page() {
+        let note = Note {
+            page: Some(16),
+            location: None,
+            subheading: None,
+            text: "Just a page".to_string(),
+        };
+
+        let mut output = String::new();
+        format_note(&mut output, &note);
+
+        assert!(output.contains("*Page 16*"), "{output}");
+        assert!(!output.contains("Location"));
+    }
+
+    #[test]
+    fn test_format_bookmark_without_location_prints_only_page() {
+        let bookmark = Bookmark {
+            page: Some(31),
+            location: None,
+            subheading: None,
+        };
+
+        let mut output = String::new();
+        format_bookmark(&mut output, &bookmark);
+
+        assert!(output.contains("**Bookmark** - Page 31\n"), "{output}");
+        assert!(!output.contains("Location"));
     }
 }

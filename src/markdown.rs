@@ -1,24 +1,39 @@
+use crate::config::{ColourStyle, HighlightColours, HighlightFormat, HighlightLayout};
 use crate::parser::{Book, Bookmark, Entry, Highlight, Note};
 use anyhow::Result;
 use chrono::Local;
 
 /// Render a book to Markdown, stamping the frontmatter with the current time.
-pub fn generate_markdown(book: &Book, enable_painter: bool) -> Result<String> {
-    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    render_markdown(book, enable_painter, &timestamp)
+pub fn generate_markdown(book: &Book, format: HighlightFormat) -> Result<String> {
+    let timestamp = Local::now().format("%Y-%m-%dT%H:%M").to_string();
+    render_markdown(book, format, &timestamp, env!("CARGO_PKG_VERSION"))
 }
 
-/// Render a book to Markdown with an explicit `created` timestamp (testable).
-pub fn render_markdown(book: &Book, enable_painter: bool, timestamp: &str) -> Result<String> {
+/// Render a book to Markdown with an explicit `inkwell-last-run-date` and
+/// `inkwell-version` (testable).
+pub fn render_markdown(
+    book: &Book,
+    format: HighlightFormat,
+    timestamp: &str,
+    version: &str,
+) -> Result<String> {
     let mut output = String::new();
 
     // Generate frontmatter
     output.push_str("---\n");
     output.push_str(&format!("title: \"{}\"\n", escape_yaml(&book.title)));
     output.push_str(&format!("author: \"{}\"\n", escape_yaml(&book.author)));
-    output.push_str(&format!("citation: \"{}\"\n", escape_yaml(&book.citation)));
-    output.push_str(&format!("source: {}\n", book.source.as_str()));
-    output.push_str(&format!("created: \"{}\"\n", timestamp));
+    output.push_str(&format!(
+        "citation: \"{}\"\n",
+        escape_yaml(frontmatter_citation(&book.citation))
+    ));
+    output.push_str(&format!("inkwell-source: {}\n", book.source.as_str()));
+    output.push_str(&format!(
+        "inkwell-highlights-count: {}\n",
+        highlight_count(book)
+    ));
+    output.push_str(&format!("inkwell-last-run-date: \"{}\"\n", timestamp));
+    output.push_str(&format!("inkwell-version: {}\n", version));
     output.push_str("---\n\n");
 
     // Generate title
@@ -42,7 +57,7 @@ pub fn render_markdown(book: &Book, enable_painter: bool, timestamp: &str) -> Re
         for entry in &section.entries {
             match entry {
                 Entry::Highlight(highlight) => {
-                    format_highlight(&mut output, highlight, enable_painter);
+                    format_highlight(&mut output, highlight, format);
                 }
                 Entry::Note(note) => {
                     format_note(&mut output, note);
@@ -57,50 +72,114 @@ pub fn render_markdown(book: &Book, enable_painter: bool, timestamp: &str) -> Re
     Ok(output)
 }
 
-fn format_highlight(output: &mut String, highlight: &Highlight, enable_painter: bool) {
-    // Format the highlight text as a blockquote
-    output.push_str(&format!("> {}\n\n", highlight.text));
+/// The citation without Kindle's `Citation (Style): ` label, which reads as
+/// noise in a property. The Metadata section keeps the full text.
+fn frontmatter_citation(citation: &str) -> &str {
+    citation
+        .strip_prefix("Citation (")
+        .and_then(|rest| rest.split_once("): "))
+        .map_or(citation, |(_, text)| text)
+}
 
-    // Add metadata line
-    output.push_str("**Highlight** (");
+fn highlight_count(book: &Book) -> usize {
+    book.sections
+        .iter()
+        .flat_map(|section| &section.entries)
+        .filter(|entry| matches!(entry, Entry::Highlight(_)))
+        .count()
+}
 
-    if enable_painter {
-        // Map Kindle colors to Obsidian Painter class suffixes
-        let painter_class = match highlight.color.to_lowercase().as_str() {
-            "yellow" => "y",
-            "green" => "g",
-            "pink" => "p",
-            "blue" => "b",
-            "red" => "r",
-            "orange" => "o",
-            "aqua" => "b", // Map aqua to blue as fallback
-            _ => "y",      // Default to yellow
-        };
+fn format_highlight(output: &mut String, highlight: &Highlight, format: HighlightFormat) {
+    let text = quote_text(highlight, format.colours);
+    let label = label_text(highlight, format.colours);
+    let position = position_parts(highlight);
 
-        output.push_str(&format!(
-            "<mark class=\"hltr-{}\">{}</mark>",
-            painter_class, highlight.color
-        ));
+    match format.layout {
+        HighlightLayout::Quote => {
+            output.push_str(&format!("> {}\n\n", text));
+            output.push_str(&format!("**Highlight** ({})", label));
+            position
+                .iter()
+                .for_each(|part| output.push_str(&format!(" - {}", part)));
+        }
+        HighlightLayout::Line => {
+            output.push_str(&format!("{} — {}", text, label));
+            if !position.is_empty() {
+                output.push_str(&format!(" | {}", position.join(" - ")));
+            }
+        }
+    }
+
+    output.push_str("\n\n---\n\n");
+}
+
+/// Subheading, page and location, whichever the highlight has.
+fn position_parts(highlight: &Highlight) -> Vec<String> {
+    [
+        highlight.subheading.as_ref().map(|s| format!("*{}*", s)),
+        highlight.page.map(|p| format!("Page {}", p)),
+        highlight.location.map(|l| format!("Location {}", l)),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+/// The blockquote body, coloured when `text` is on.
+fn quote_text(highlight: &Highlight, colours: HighlightColours) -> String {
+    if colours.text {
+        paint(&highlight.text, &highlight.color, colours.style)
     } else {
-        output.push_str(&highlight.color);
+        highlight.text.clone()
     }
+}
 
-    output.push(')');
-
-    if let Some(ref subheading) = highlight.subheading {
-        output.push_str(&format!(" - *{}*", subheading));
+/// The colour name on the metadata line, coloured when `label` is on.
+fn label_text(highlight: &Highlight, colours: HighlightColours) -> String {
+    if colours.label {
+        paint(&highlight.color, &highlight.color, colours.style)
+    } else {
+        highlight.color.clone()
     }
+}
 
-    if let Some(page) = highlight.page {
-        output.push_str(&format!(" - Page {}", page));
+/// Wrap `content` in `color`. Obsidian style leaves text that already holds
+/// `==` alone, since that would end the highlight early.
+fn paint(content: &str, color: &str, style: ColourStyle) -> String {
+    match style {
+        ColourStyle::Obsidian if content.contains("==") => content.to_string(),
+        ColourStyle::Obsidian => format!("=={}{}==", obsidian_color_emoji(color), content),
+        ColourStyle::Painter => format!(
+            "<mark class=\"hltr-{}\">{}</mark>",
+            painter_class(color),
+            content
+        ),
     }
+}
 
-    if let Some(location) = highlight.location {
-        output.push_str(&format!(" - Location {}", location));
+/// Obsidian Painter class suffix for a Kindle colour.
+fn painter_class(color: &str) -> &'static str {
+    match color.to_lowercase().as_str() {
+        "green" => "g",
+        "pink" => "p",
+        "blue" | "aqua" => "b",
+        "red" => "r",
+        "orange" => "o",
+        _ => "y",
     }
-    output.push_str("\n\n");
+}
 
-    output.push_str("---\n\n");
+/// Obsidian's colour prefix for a Kindle colour. Yellow (and anything
+/// unrecognised) gets none: a bare `==text==` is Obsidian's default yellow.
+fn obsidian_color_emoji(color: &str) -> &'static str {
+    match color.to_lowercase().as_str() {
+        "red" => "🔴",
+        "orange" => "🟠",
+        "green" => "🟢",
+        "blue" | "aqua" => "🔵",
+        "pink" => "🟣",
+        _ => "",
+    }
 }
 
 fn format_note(output: &mut String, note: &Note) {
@@ -155,6 +234,121 @@ mod tests {
     use super::*;
     use crate::parser::Section;
 
+    const PLAIN: HighlightColours = HighlightColours {
+        style: ColourStyle::Obsidian,
+        text: false,
+        label: false,
+    };
+
+    const PAINTER_LABEL: HighlightColours = HighlightColours {
+        style: ColourStyle::Painter,
+        text: false,
+        label: true,
+    };
+
+    const OBSIDIAN_BOTH: HighlightColours = HighlightColours {
+        style: ColourStyle::Obsidian,
+        text: true,
+        label: true,
+    };
+
+    fn quote(colours: HighlightColours) -> HighlightFormat {
+        HighlightFormat {
+            layout: HighlightLayout::Quote,
+            colours,
+        }
+    }
+
+    fn line(colours: HighlightColours) -> HighlightFormat {
+        HighlightFormat {
+            layout: HighlightLayout::Line,
+            colours,
+        }
+    }
+
+    fn render_line(highlight: &Highlight) -> String {
+        let mut output = String::new();
+        format_highlight(&mut output, highlight, line(OBSIDIAN_BOTH));
+        output
+    }
+
+    #[test]
+    fn line_layout_puts_text_label_and_position_on_one_line() {
+        let highlight = Highlight {
+            color: "pink".to_string(),
+            page: Some(14),
+            location: Some(126),
+            subheading: Some("Self-driving people".to_string()),
+            text: "People like this tend to thrive.".to_string(),
+        };
+        assert_eq!(
+            render_line(&highlight),
+            "==🟣People like this tend to thrive.== — ==🟣pink== | *Self-driving people* - Page 14 - Location 126\n\n---\n\n"
+        );
+    }
+
+    #[test]
+    fn line_layout_omits_missing_position_parts() {
+        let highlight = Highlight {
+            location: Some(200),
+            page: None,
+            ..highlight_in("blue", "No page here.")
+        };
+        assert_eq!(
+            render_line(&highlight),
+            "==🔵No page here.== — ==🔵blue== | Location 200\n\n---\n\n"
+        );
+    }
+
+    #[test]
+    fn line_layout_without_position_ends_at_label() {
+        let highlight = Highlight {
+            page: None,
+            ..highlight_in("yellow", "Nowhere.")
+        };
+        assert_eq!(
+            render_line(&highlight),
+            "==Nowhere.== — ==yellow==\n\n---\n\n"
+        );
+    }
+
+    #[test]
+    fn line_layout_with_colours_off_is_plain() {
+        let mut output = String::new();
+        format_highlight(&mut output, &highlight_in("pink", "Plain."), line(PLAIN));
+        assert_eq!(output, "Plain. — pink | Page 3\n\n---\n\n");
+    }
+
+    #[test]
+    fn line_layout_leaves_notes_and_bookmarks_unchanged() -> Result<()> {
+        let book = Book {
+            title: "Test Book".to_string(),
+            author: "Test Author".to_string(),
+            citation: String::new(),
+            source: crate::parser::Source::KindleExport,
+            sections: vec![Section {
+                heading: "Chapter".to_string(),
+                entries: vec![
+                    Entry::Note(Note {
+                        page: Some(16),
+                        location: Some(143),
+                        subheading: None,
+                        text: "My note.".to_string(),
+                    }),
+                    Entry::Bookmark(Bookmark {
+                        page: Some(17),
+                        location: Some(150),
+                        subheading: None,
+                    }),
+                ],
+            }],
+        };
+        let quoted = render_markdown(&book, quote(OBSIDIAN_BOTH), "t", "0.0.0")?;
+        let lined = render_markdown(&book, line(OBSIDIAN_BOTH), "t", "0.0.0")?;
+        assert_eq!(quoted, lined);
+        Ok(())
+    }
+
     #[test]
     fn test_format_highlight_yellow_with_painter() {
         let highlight = Highlight {
@@ -166,7 +360,7 @@ mod tests {
         };
 
         let mut output = String::new();
-        format_highlight(&mut output, &highlight, true);
+        format_highlight(&mut output, &highlight, quote(PAINTER_LABEL));
 
         assert!(output.contains("> This is a test highlight."));
         assert!(output.contains("<mark class=\"hltr-y\">yellow</mark>"));
@@ -186,7 +380,7 @@ mod tests {
         };
 
         let mut output = String::new();
-        format_highlight(&mut output, &highlight, false);
+        format_highlight(&mut output, &highlight, quote(PLAIN));
 
         assert!(output.contains("> This is a test highlight."));
         assert!(output.contains("**Highlight** (yellow)"));
@@ -206,7 +400,7 @@ mod tests {
         };
 
         let mut output = String::new();
-        format_highlight(&mut output, &highlight, true);
+        format_highlight(&mut output, &highlight, quote(PAINTER_LABEL));
 
         assert!(output.contains("> People like this tend to thrive."));
         assert!(output.contains("<mark class=\"hltr-p\">pink</mark>"));
@@ -237,7 +431,7 @@ mod tests {
             };
 
             let mut output = String::new();
-            format_highlight(&mut output, &highlight, true);
+            format_highlight(&mut output, &highlight, quote(PAINTER_LABEL));
 
             let expected_markup = format!(
                 "<mark class=\"hltr-{}\">{}</mark>",
@@ -251,6 +445,118 @@ mod tests {
                 output
             );
         }
+    }
+
+    fn highlight_in(color: &str, text: &str) -> Highlight {
+        Highlight {
+            color: color.to_string(),
+            page: Some(3),
+            location: None,
+            subheading: None,
+            text: text.to_string(),
+        }
+    }
+
+    fn render(colours: HighlightColours, color: &str, text: &str) -> String {
+        let mut output = String::new();
+        format_highlight(&mut output, &highlight_in(color, text), quote(colours));
+        output
+    }
+
+    #[test]
+    fn obsidian_text_and_label_use_color_emoji() {
+        let cases = [
+            ("orange", "🟠"),
+            ("green", "🟢"),
+            ("blue", "🔵"),
+            ("aqua", "🔵"),
+            ("pink", "🟣"),
+            ("red", "🔴"),
+            ("Blue", "🔵"),
+        ];
+
+        for (color, emoji) in cases {
+            let output = render(OBSIDIAN_BOTH, color, "Test text");
+            let quote = format!("> =={}Test text==\n", emoji);
+            let label = format!("**Highlight** (=={}{}==) - Page 3", emoji, color);
+            assert!(output.starts_with(&quote), "{}: {}", color, output);
+            assert!(output.contains(&label), "{}: {}", color, output);
+        }
+    }
+
+    #[test]
+    fn obsidian_yellow_and_unknown_colors_get_no_emoji() {
+        for color in ["yellow", "chartreuse"] {
+            let output = render(OBSIDIAN_BOTH, color, "Test text");
+            assert!(output.starts_with("> ==Test text==\n"), "{}", output);
+            let label = format!("**Highlight** (=={}==)", color);
+            assert!(output.contains(&label), "{}", output);
+        }
+    }
+
+    #[test]
+    fn obsidian_label_only_leaves_quote_plain() {
+        let colours = HighlightColours {
+            text: false,
+            ..OBSIDIAN_BOTH
+        };
+        let output = render(colours, "pink", "Test text");
+        assert!(output.starts_with("> Test text\n"), "{}", output);
+        assert!(output.contains("**Highlight** (==🟣pink==)"), "{}", output);
+    }
+
+    #[test]
+    fn obsidian_text_only_leaves_label_plain() {
+        let colours = HighlightColours {
+            label: false,
+            ..OBSIDIAN_BOTH
+        };
+        let output = render(colours, "pink", "Test text");
+        assert!(output.starts_with("> ==🟣Test text==\n"), "{}", output);
+        assert!(
+            output.contains("**Highlight** (pink) - Page 3"),
+            "{}",
+            output
+        );
+    }
+
+    #[test]
+    fn painter_text_wraps_quote_in_mark() {
+        let colours = HighlightColours {
+            style: ColourStyle::Painter,
+            text: true,
+            label: true,
+        };
+        let output = render(colours, "pink", "Test text");
+        assert!(
+            output.starts_with("> <mark class=\"hltr-p\">Test text</mark>\n"),
+            "{}",
+            output
+        );
+        assert!(
+            output.contains("(<mark class=\"hltr-p\">pink</mark>)"),
+            "{}",
+            output
+        );
+    }
+
+    #[test]
+    fn plain_colours_leave_quote_and_label_unmarked() {
+        let output = render(PLAIN, "pink", "Test text");
+        assert!(output.starts_with("> Test text\n"), "{}", output);
+        assert!(output.contains("**Highlight** (pink)"), "{}", output);
+        assert!(
+            !output.contains("==") && !output.contains("<mark"),
+            "{}",
+            output
+        );
+    }
+
+    #[test]
+    fn obsidian_skips_wrapping_text_containing_highlight_marker() {
+        let output = render(OBSIDIAN_BOTH, "blue", "if a == b then");
+        assert!(output.starts_with("> if a == b then\n"), "{}", output);
+        assert!(output.contains("(==🔵blue==)"), "{}", output);
     }
 
     #[test]
@@ -317,6 +623,20 @@ mod tests {
     }
 
     #[test]
+    fn frontmatter_citation_drops_style_label() {
+        assert_eq!(
+            frontmatter_citation("Citation (Chicago Style): Arundel, John. Master."),
+            "Arundel, John. Master."
+        );
+        assert_eq!(
+            frontmatter_citation("Citation (APA): Author, T. (2025)."),
+            "Author, T. (2025)."
+        );
+        assert_eq!(frontmatter_citation("Test Citation"), "Test Citation");
+        assert_eq!(frontmatter_citation(""), "");
+    }
+
+    #[test]
     fn test_generate_markdown_frontmatter() {
         let book = Book {
             title: "Test Book".to_string(),
@@ -326,14 +646,25 @@ mod tests {
             sections: vec![],
         };
 
-        let markdown = generate_markdown(&book, false).unwrap();
+        let markdown = generate_markdown(&book, quote(PLAIN)).unwrap();
 
         assert!(markdown.contains("---"));
         assert!(markdown.contains("title: \"Test Book\""));
         assert!(markdown.contains("author: \"Test Author\""));
         assert!(markdown.contains("citation: \"Test Citation\""));
-        assert!(markdown.contains("source: kindle-export"));
-        assert!(markdown.contains("created: \""));
+        assert!(markdown.contains("\ninkwell-source: kindle-export\n"));
+        assert!(markdown.contains("\ninkwell-highlights-count: 0\n"));
+        assert!(!markdown.contains("\nsource:") && !markdown.contains("\ncreated:"));
+        let run_date = markdown
+            .lines()
+            .find_map(|line| line.strip_prefix("inkwell-last-run-date: "))
+            .unwrap_or_default();
+        assert!(
+            chrono::NaiveDateTime::parse_from_str(run_date, "\"%Y-%m-%dT%H:%M\"").is_ok(),
+            "{run_date}"
+        );
+        let version_line = format!("\ninkwell-version: {}\n", env!("CARGO_PKG_VERSION"));
+        assert!(markdown.contains(&version_line), "{markdown}");
     }
 
     #[test]
@@ -363,7 +694,7 @@ mod tests {
             }],
         };
 
-        let markdown = generate_markdown(&book, true).unwrap();
+        let markdown = generate_markdown(&book, quote(PAINTER_LABEL)).unwrap();
 
         assert!(markdown.contains("### Chapter 1"));
         assert!(markdown.contains("> First highlight"));
@@ -376,7 +707,7 @@ mod tests {
         let golden = include_str!("../tests/fixtures/kindle-export.golden.md");
         let book = crate::parser::parse_html(html).unwrap();
 
-        let markdown = render_markdown(&book, false, "2026-01-01 00:00:00").unwrap();
+        let markdown = render_markdown(&book, quote(PLAIN), "2026-01-01T00:00", "0.0.0").unwrap();
 
         assert_eq!(markdown, golden);
     }
@@ -387,7 +718,8 @@ mod tests {
         let golden = include_str!("../tests/fixtures/my-clippings-crossink.golden.md");
         let parsed = crate::clippings::parse_clippings(content);
 
-        let markdown = render_markdown(&parsed.books[0], false, "2026-01-01 00:00:00").unwrap();
+        let markdown =
+            render_markdown(&parsed.books[0], quote(PLAIN), "2026-01-01T00:00", "0.0.0").unwrap();
 
         assert_eq!(markdown, golden);
     }
@@ -398,7 +730,8 @@ mod tests {
         let golden = include_str!("../tests/fixtures/my-clippings-kindle.golden.md");
         let parsed = crate::clippings::parse_clippings(content);
 
-        let markdown = render_markdown(&parsed.books[0], false, "2026-01-01 00:00:00").unwrap();
+        let markdown =
+            render_markdown(&parsed.books[0], quote(PLAIN), "2026-01-01T00:00", "0.0.0").unwrap();
 
         assert_eq!(markdown, golden);
     }

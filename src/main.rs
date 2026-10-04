@@ -6,6 +6,7 @@ mod parser;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser as ClapParser;
+use config::HighlightFormat;
 use parser::Book;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -56,6 +57,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     let config = config::Config::load().context("Failed to load configuration")?;
+    let format = config.highlight_format();
 
     let content = fs::read_to_string(&args.input).map_err(|e| {
         anyhow::anyhow!("Failed to read file {:?}: {} ({})", args.input, e, e.kind())
@@ -77,7 +79,7 @@ fn main() -> Result<()> {
     println!("  Input:  {:?}", args.input);
     for book in &books {
         let output_path = destination.path_for(book);
-        write_note(book, &output_path, config.enable_painter_highlights)?;
+        write_note(book, &output_path, format)?;
         println!("  Output: {:?}", output_path);
     }
 
@@ -108,9 +110,9 @@ fn is_clippings_file(input: &Path) -> bool {
         .is_some_and(|ext| ext.eq_ignore_ascii_case("txt"))
 }
 
-fn write_note(book: &Book, output_path: &Path, enable_painter: bool) -> Result<()> {
+fn write_note(book: &Book, output_path: &Path, format: HighlightFormat) -> Result<()> {
     let markdown =
-        markdown::generate_markdown(book, enable_painter).context("Failed to generate Markdown")?;
+        markdown::generate_markdown(book, format).context("Failed to generate Markdown")?;
 
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent).context("Failed to create output directory")?;

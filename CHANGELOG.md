@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-10-04
+
+**Breaking:** frontmatter properties renamed; update any Bases or Dataview queries over inkwell notes. Notes are rebuilt on every run, so re-running inkwell updates them.
+
+### Added
+- `inkwell-version` frontmatter property recording the version that wrote the note
+- `inkwell-highlights-count` frontmatter property
+- `highlight_layout` config option: `quote` (default, the existing blockquote) or `line` (`text — colour | position` on one line, matching Flint)
+- `[highlight_colours]` config table: `style` (`obsidian` or `painter`), `text` and `label` switches
+  - `obsidian` writes Obsidian 1.14+ native colour highlights (`==🟣text==`); `painter` writes `<mark class="hltr-*">`
+  - `text` colours the quoted passage, `label` the colour name on the metadata line
+  - Orange 🟠, green 🟢, blue and aqua 🔵, pink 🟣, red 🔴; yellow and unknown colours get a plain `==text==`
+  - Text already containing `==` is left unwrapped in `obsidian` style
+
+### Changed
+- `source` renamed to `inkwell-source`, so it no longer clashes with Web Clipper's `source` URL
+- `created` replaced by `inkwell-last-run-date` in `YYYY-MM-DDTHH:MM` (an Obsidian date-time); it was rewritten every run, so it never meant creation
+- `citation` property drops Kindle's `Citation (Style): ` label; the Metadata section keeps the full text
+- Default output colours the label in `obsidian` style and leaves the quoted passage plain; previously colours were plain text unless Painter was enabled
+- `enable_painter_highlights` is deprecated: `true` still gives the old Painter label, and `[highlight_colours]` takes precedence
+- Auto-created configs write `[highlight_colours]` instead of `enable_painter_highlights`
+
 ## [0.1.2] - 2026-09-06
 
 ### Added

@@ -2,8 +2,10 @@
 title: "A Philosophy of Software Design, 2nd Edition"
 author: "John K. Ousterhout"
 citation: ""
-source: crossink-clippings
-created: "2026-01-01 00:00:00"
+inkwell-source: crossink-clippings
+inkwell-highlights-count: 1
+inkwell-last-run-date: "2026-01-01T00:00"
+inkwell-version: 0.0.0
 ---
 
 # A Philosophy of Software Design, 2nd Edition

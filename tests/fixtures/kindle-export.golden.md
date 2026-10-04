@@ -1,9 +1,11 @@
 ---
 title: "Test Book: A \"Quoted\" Title"
 author: "Test Author"
-citation: "Citation (MLA): Author, Test. Test Book. , 2025. Kindle file."
-source: kindle-export
-created: "2026-01-01 00:00:00"
+citation: "Author, Test. Test Book. , 2025. Kindle file."
+inkwell-source: kindle-export
+inkwell-highlights-count: 4
+inkwell-last-run-date: "2026-01-01T00:00"
+inkwell-version: 0.0.0
 ---
 
 # Test Book: A "Quoted" Title

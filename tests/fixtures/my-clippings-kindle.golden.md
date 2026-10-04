@@ -2,8 +2,10 @@
 title: "The Pragmatic Programmer"
 author: "David Thomas; Andrew Hunt"
 citation: ""
-source: kindle-clippings
-created: "2026-01-01 00:00:00"
+inkwell-source: kindle-clippings
+inkwell-highlights-count: 2
+inkwell-last-run-date: "2026-01-01T00:00"
+inkwell-version: 0.0.0
 ---
 
 # The Pragmatic Programmer

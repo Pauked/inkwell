@@ -13,15 +13,16 @@ Reads two inputs:
 - Imports `My Clippings.txt` (Kindle device or CrossInk firmware): one note per book, chapters as sections, exact duplicates dropped, notes rebuilt from the whole file on every run
 - Preserves all highlight metadata:
   - Highlight colors (yellow, pink, blue, orange, green, aqua, red)
-  - Optional color-coded metadata labels using [Obsidian Painter](https://github.com/KraXen72/obsidian-painter) classes (off by default)
+  - Colour on the passage, the colour label, or both, as native Obsidian 1.14+ highlights (default) or [Obsidian Painter](https://github.com/KraXen72/obsidian-painter) classes
+  - Blockquote layout (default) or a one-line layout matching Flint
   - Page numbers and locations
   - Section headings and subheadings
   - Notes and bookmarks
-- YAML frontmatter with book metadata and creation timestamp
+- YAML frontmatter with book metadata, highlight count and last-run timestamp
 - Supports all Kindle citation formats: MLA, APA, Chicago Style, or None
 - Configurable default export folder (supports multiple config locations)
 - Automatic file naming based on author and title
-- Fully unit tested (42 tests) with cargo clippy compliance
+- Fully unit tested (66 tests) with cargo clippy compliance
 
 ## Installation
 
@@ -53,7 +54,7 @@ Any `.txt` input is treated as a Kindle-device `My Clippings.txt`. Every book in
 inkwell "/Volumes/KINDLE/documents/My Clippings.txt"
 ```
 
-Both dialects are handled. A physical Kindle writes `Location 123-125` (the note records the first number) and also emits notes and bookmarks; CrossInk writes the chapter title instead, which becomes the section heading. The frontmatter `source` field says which: `kindle-clippings` or `crossink-clippings`. Malformed or empty clippings are skipped with a warning on stderr.
+Both dialects are handled. A physical Kindle writes `Location 123-125` (the note records the first number) and also emits notes and bookmarks; CrossInk writes the chapter title instead, which becomes the section heading. The frontmatter `inkwell-source` property says which: `kindle-clippings` or `crossink-clippings`. Malformed or empty clippings are skipped with a warning on stderr.
 
 ### Specify Output File
 
@@ -81,10 +82,40 @@ Configuration file format:
 ```toml
 default_export_folder = "/path/to/your/obsidian/vault/highlights"
 
-# Enable Obsidian Painter plugin color highlighting (optional, off by default)
-# Set to true if you have the Obsidian Painter plugin installed
-enable_painter_highlights = false
+# Highlight layout (optional): "quote" (default) or "line"
+highlight_layout = "quote"
+
+# Highlight colours (optional; these are the defaults)
+[highlight_colours]
+style = "obsidian"   # "obsidian" (==🟣text==) or "painter" (<mark class="hltr-p">text</mark>)
+text = false         # colour the highlighted passage
+label = true         # colour the colour-name label on the metadata line
 ```
+
+With the defaults, a pink highlight renders as:
+
+```markdown
+> People like this tend to thrive.
+
+**Highlight** (==🟣pink==) - Page 14 - Location 126
+```
+
+With `highlight_layout = "line"` the same highlight sits on one line, Flint-style:
+
+```markdown
+People like this tend to thrive. — ==🟣pink== | *Self-driving people* - Page 14 - Location 126
+```
+
+Notes and bookmarks look the same in both layouts.
+
+| `style` | Markup | Needs |
+|---|---|---|
+| `obsidian` | `==🟣text==` | Obsidian 1.14+ |
+| `painter` | `<mark class="hltr-p">text</mark>` | [Painter](https://github.com/KraXen72/obsidian-painter) plugin or a CSS snippet for `hltr-*` |
+
+Set `text` and `label` to `false` for no colour markup at all. Obsidian colour mapping: orange 🟠, green 🟢, blue and aqua 🔵, pink 🟣, red 🔴; yellow gets no emoji, since a plain `==text==` is Obsidian's default yellow. Text that already contains `==` is left unwrapped.
+
+The older `enable_painter_highlights = true` still works and gives its original output (Painter style, label only); `[highlight_colours]` wins if both are set. The Painter plugin can interfere with Obsidian's native highlight swatch, so turn it off when using `obsidian`.
 
 If no config file is found, inkwell defaults to `~/Documents/Inkwell`.
 
@@ -103,7 +134,13 @@ If no config file is found, inkwell defaults to `~/Documents/Inkwell`.
 
 The generated Markdown includes:
 
-- YAML frontmatter with title, author, citation and source (`kindle-export`, `kindle-clippings` or `crossink-clippings`)
+- YAML frontmatter:
+  - `title`, `author` and `citation` (Kindle's `Citation (Style):` label dropped; the Metadata section keeps it)
+  - `inkwell-source`: `kindle-export`, `kindle-clippings` or `crossink-clippings`
+  - `inkwell-highlights-count`
+  - `inkwell-last-run-date`: when inkwell last wrote the note (`YYYY-MM-DDTHH:MM`, an Obsidian date-time)
+  - `inkwell-version`
+  - Properties inkwell owns carry the `inkwell-` prefix so they don't clash with others in your vault, such as Web Clipper's `source` URL or a note's `created` date
 - Book metadata section
 - Highlights organized by chapter/section
 - All notes and bookmarks preserved with their context
@@ -115,9 +152,11 @@ Example output:
 ---
 title: "Book Title"
 author: "Author Name"
-citation: "Citation (MLA): Author, Name. Book Title. , 2025. Kindle file."
-source: kindle-export
-created: "2025-11-02 17:15:01"
+citation: "Author, Name. Book Title. , 2025. Kindle file."
+inkwell-source: kindle-export
+inkwell-highlights-count: 1
+inkwell-last-run-date: "2025-11-02T17:15"
+inkwell-version: 0.2.0
 ---
 
 # Book Title
@@ -132,7 +171,7 @@ created: "2025-11-02 17:15:01"
 
 > This is a highlighted passage.
 
-**Highlight** (<mark class="hltr-y">yellow</mark>) - Page 15 - Location 234
+**Highlight** (==🔵blue==) - Page 15 - Location 234
 
 ---
 
@@ -145,7 +184,7 @@ created: "2025-11-02 17:15:01"
 
 ## Development
 
-Run tests (42 tests):
+Run tests (66 tests):
 
 ```bash
 cargo test

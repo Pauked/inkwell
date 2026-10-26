@@ -12,3 +12,7 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.9"
 anyhow = "1.0"
 chrono = "0.4"
+
+[profile.dev]
+# Line tables keep backtraces readable; full debug info makes target/ huge.
+debug = "line-tables-only"
